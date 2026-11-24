@@ -1,5 +1,5 @@
 -- =======================================================
--- SCRIPT AUTO-FARM + GUI: ROUBE UM OVO (ROBLOX)
+-- SCRIPT AUTO-FARM + HUB VISUAL: ROUBE UM OVO (ROBLOX)
 -- Arquivo: script_roube_um_ovo.lua
 -- =======================================================
 
@@ -17,7 +17,7 @@ LocalPlayer.CharacterAdded:Connect(function(novoChar)
     Character = novoChar
 end)
 
--- Configurações Globais (herdam valores do Streamlit ou usam o padrão)
+-- Configurações Globais (sincronizadas com o Streamlit)
 if _G.AutoFarmOvos == nil then _G.AutoFarmOvos = true end
 if _G.AutoMissoes == nil then _G.AutoMissoes = true end
 if _G.AutoChocarOvos == nil then _G.AutoChocarOvos = false end
@@ -38,7 +38,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
--- Botão flutuante para abrir/fechar o menu
+-- Botão flutuante para abrir/fechar o painel
 local ToggleMenuBtn = Instance.new("TextButton")
 ToggleMenuBtn.Name = "ToggleMenuBtn"
 ToggleMenuBtn.Size = UDim2.new(0, 48, 0, 48)
@@ -62,8 +62,8 @@ ToggleStroke.Parent = ToggleMenuBtn
 -- Janela Principal
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 250, 0, 315)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -157)
+MainFrame.Size = UDim2.new(0, 255, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -127, 0.5, -160)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
@@ -126,7 +126,6 @@ UIListLayout.Padding = UDim.new(0, 7)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = Container
 
--- Função auxiliar para criar botões de alternância (ON/OFF)
 local function criarBotaoToggle(texto, chaveGlobal, ordem)
     local btn = Instance.new("TextButton")
     btn.LayoutOrder = ordem
@@ -188,7 +187,7 @@ OvoBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Seletor de Distância
-local distancias = {50, 100, 150, 200}
+local distancias = {50, 100, 200, 300}
 local indiceDist = 2
 local DistBtn = Instance.new("TextButton")
 DistBtn.LayoutOrder = 6
@@ -210,7 +209,6 @@ DistBtn.MouseButton1Click:Connect(function()
     DistBtn.Text = "Distância Coleta: " .. tostring(_G.DistanciaColeta) .. " studs"
 end)
 
--- Minimizar / Expandir GUI
 CloseBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
 end)
@@ -257,8 +255,21 @@ LocalPlayer.Idled:Connect(function()
 end)
 
 -- -------------------------------------------------------
--- 3. Auto Farm (Coletar Ovos e Moedas)
+-- 3. Auto Farm (Coletar Ovos e Moedas com suporte a Model/Part)
 -- -------------------------------------------------------
+local function obterAlvoCFrame(instancia)
+    if not instancia then return nil end
+    if instancia:IsA("Attachment") then
+        instancia = instancia.Parent
+    end
+    if instancia:IsA("BasePart") then
+        return instancia.CFrame
+    elseif instancia:IsA("Model") then
+        return instancia:GetPivot()
+    end
+    return nil
+end
+
 local function coletarOvosProximos()
     while task.wait(0.15) do
         if _G.AutoFarmOvos then
@@ -268,20 +279,23 @@ local function coletarOvosProximos()
                     if not _G.AutoFarmOvos then break end
 
                     if object:IsA("ProximityPrompt") then
-                        local parent = object.Parent
-                        if parent and parent:IsA("BasePart") and (parent.Name:lower():find("ovo") or parent.Name:lower():find("egg") or parent.Name:lower():find("coin") or parent.Name:lower():find("moeda")) then
-                            local dist = (rootPart.Position - parent.Position).Magnitude
-                            if dist <= _G.DistanciaColeta then
-                                rootPart.CFrame = parent.CFrame + Vector3.new(0, 3, 0)
-                                fireproximityprompt(object)
+                        local alvo = object.Parent
+                        if alvo and alvo:IsA("Attachment") then alvo = alvo.Parent end
+                        if alvo and (alvo.Name:lower():find("ovo") or alvo.Name:lower():find("egg") or alvo.Name:lower():find("coin") or alvo.Name:lower():find("moeda")) then
+                            local cf = obterAlvoCFrame(alvo)
+                            if cf and (rootPart.Position - cf.Position).Magnitude <= _G.DistanciaColeta then
+                                rootPart.CFrame = cf + Vector3.new(0, 3, 0)
+                                pcall(function() fireproximityprompt(object) end)
                                 task.wait(0.05)
                             end
                         end
                     elseif object:IsA("TouchTransmitter") and object.Parent then
                         local item = object.Parent
-                        if item.Name:lower():find("ovo") or item.Name:lower():find("egg") or item.Name:lower():find("coin") or item.Name:lower():find("moeda") then
-                            firetouchinterest(rootPart, item, 0)
-                            firetouchinterest(rootPart, item, 1)
+                        if item:IsA("BasePart") and (item.Name:lower():find("ovo") or item.Name:lower():find("egg") or item.Name:lower():find("coin") or item.Name:lower():find("moeda")) then
+                            pcall(function()
+                                firetouchinterest(rootPart, item, 0)
+                                firetouchinterest(rootPart, item, 1)
+                            end)
                         end
                     end
                 end
@@ -311,7 +325,7 @@ local function gerenciarMissoes()
                 for _, npc in pairs(missoesFolder:GetChildren()) do
                     local prompt = npc:FindFirstChildWhichIsA("ProximityPrompt", true)
                     if prompt then
-                        fireproximityprompt(prompt)
+                        pcall(function() fireproximityprompt(prompt) end)
                     end
                 end
             end
