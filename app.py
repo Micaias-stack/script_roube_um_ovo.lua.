@@ -1,157 +1,50 @@
--- =======================================================
--- SCRIPT AUTO-FARM COMPLETO: ROUBE UM OVO (ROBLOX)
--- Arquivo: script_roube_um_ovo.lua
--- =======================================================
+import streamlit as st
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local VirtualUser = game:GetService("VirtualUser")
+st.set_page_config(page_title="Gerador de Script - Roube um Ovo", page_icon="🥚", layout="centered")
 
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+st.title("🥚 Painel de Controle: Roube um Ovo")
+st.write("Configure as funções abaixo e copie o código pronto para usar no seu executor do Roblox.")
 
--- Atualiza o personagem caso o jogador renasça
-LocalPlayer.CharacterAdded:Connect(function(novoChar)
-    Character = novoChar
-end)
+st.markdown("---")
 
--- Configurações Globais (Valores padrão definidos dinamicamente pelo Streamlit)
-_G.AutoFarmOvos = _G.AutoFarmOvos ~= nil and _G.AutoFarmOvos or true
-_G.AutoMissoes = _G.AutoMissoes ~= nil and _G.AutoMissoes or true
-_G.AutoChocarOvos = _G.AutoChocarOvos ~= nil and _G.AutoChocarOvos or false
-_G.AutoRebirth = _G.AutoRebirth ~= nil and _G.AutoRebirth or false
-_G.DistanciaColeta = _G.DistanciaColeta or 100
-_G.NomeOvoParaChocar = _G.NomeOvoParaChocar or "Ovo Comum"
+# Link RAW configurado para o seu repositório no GitHub
+raw_url = st.text_input(
+    "Link RAW do seu script .lua no GitHub:",
+    value="https://raw.githubusercontent.com/Micaias-stack/script_roube_um_ovo.lua./main/script_roube_um_ovo.lua",
+    help="URL RAW gerada pelo arquivo script_roube_um_ovo.lua no seu GitHub."
+)
 
--- -------------------------------------------------------
--- 1. Anti-AFK (Impede desconexão automática após 20 min)
--- -------------------------------------------------------
-LocalPlayer.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
-    print("[ANTI-AFK] Prevencao de kick ativada com sucesso.")
-end)
+st.markdown("### ⚙️ Opções do Auto-Farm")
 
--- -------------------------------------------------------
--- 2. Auto Farm (Teleporta e coleta Ovos/Moedas pelo mapa)
--- -------------------------------------------------------
-local function coletarOvosProximos()
-    while task.wait(0.15) do
-        if _G.AutoFarmOvos then
-            local rootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                for _, object in pairs(Workspace:GetDescendants()) do
-                    if not _G.AutoFarmOvos then break end
+col1, col2 = st.columns(2)
 
-                    -- Coleta por interacao ProximityPrompt (Tecla E)
-                    if object:IsA("ProximityPrompt") then
-                        local parent = object.Parent
-                        if parent and (parent.Name:lower():find("ovo") or parent.Name:lower():find("egg") or parent.Name:lower():find("coin") or parent.Name:lower():find("moeda")) then
-                            local dist = (rootPart.Position - parent.Position).Magnitude
-                            if dist <= _G.DistanciaColeta then
-                                rootPart.CFrame = parent.CFrame + Vector3.new(0, 3, 0)
-                                fireproximityprompt(object)
-                                task.wait(0.05)
-                            end
-                        end
+with col1:
+    auto_farm = st.checkbox("Auto Farm Ovos", value=True)
+    auto_missoes = st.checkbox("Auto Missões / Quests", value=True)
+    distancia = st.slider("Distância de Coleta (Studs)", min_value=10, max_value=200, value=100, step=5)
 
-                    -- Coleta por toque (TouchTransmitter)
-                    elseif object:IsA("TouchTransmitter") and object.Parent then
-                        local item = object.Parent
-                        if item.Name:lower():find("ovo") or item.Name:lower():find("egg") or item.Name:lower():find("coin") or item.Name:lower():find("moeda") then
-                            firetouchinterest(rootPart, item, 0)
-                            firetouchinterest(rootPart, item, 1)
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
+with col2:
+    auto_hatch = st.checkbox("Auto Chocar Ovos", value=False)
+    ovo_selecionado = st.selectbox(
+        "Tipo de Ovo para Chocar",
+        ["Ovo Comum", "Ovo Raro", "Ovo Épico", "Ovo Lendário"]
+    )
+    auto_rebirth = st.checkbox("Auto Rebirth", value=False)
 
--- -------------------------------------------------------
--- 3. Auto Missões (Aceitar e Resgatar Recompensas)
--- -------------------------------------------------------
-local function gerenciarMissoes()
-    while task.wait(2) do
-        if _G.AutoMissoes then
-            -- Tenta acionar eventos de missao no ReplicatedStorage
-            for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-                if v:IsA("RemoteEvent") and (v.Name:lower():find("quest") or v.Name:lower():find("missao") or v.Name:lower():find("claim")) then
-                    pcall(function()
-                        v:FireServer("All")
-                        v:FireServer(1)
-                        v:FireServer(true)
-                    end)
-                end
-            end
+# Código Luau gerado dinamicamente
+lua_script = f"""-- Script Gerado via Painel Web Streamlit
+_G.AutoFarmOvos = {str(auto_farm).lower()}
+_G.AutoMissoes = {str(auto_missoes).lower()}
+_G.AutoChocarOvos = {str(auto_hatch).lower()}
+_G.AutoRebirth = {str(auto_rebirth).lower()}
+_G.DistanciaColeta = {distancia}
+_G.NomeOvoParaChocar = "{ovo_selecionado}"
 
-            -- Interage com NPCs de missoes espalhados no mapa
-            local missoesFolder = Workspace:FindFirstChild("Quests") or Workspace:FindFirstChild("Missoes") or Workspace:FindFirstChild("NPCs")
-            if missoesFolder then
-                for _, npc in pairs(missoesFolder:GetChildren()) do
-                    local prompt = npc:FindFirstChildWhichIsA("ProximityPrompt", true)
-                    if prompt then
-                        fireproximityprompt(prompt)
-                    end
-                end
-            end
-        end
-    end
-end
+loadstring(game:HttpGet("{raw_url}"))()
+"""
 
--- -------------------------------------------------------
--- 4. Auto Chocar Ovos (Hatch Automatico)
--- -------------------------------------------------------
-local function chocarOvosAutomatico()
-    while task.wait(0.5) do
-        if _G.AutoChocarOvos then
-            for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-                if v.Name:lower():find("hatch") or v.Name:lower():find("open") or v.Name:lower():find("egg") then
-                    pcall(function()
-                        if v:IsA("RemoteFunction") then
-                            v:InvokeServer(_G.NomeOvoParaChocar, 1)
-                        elseif v:IsA("RemoteEvent") then
-                            v:FireServer(_G.NomeOvoParaChocar, 1)
-                        end
-                    end)
-                end
-            end
-        end
-    end
-end
+st.markdown("---")
+st.markdown("### 📜 Código para Colar no Executor")
+st.code(lua_script, language="lua")
 
--- -------------------------------------------------------
--- 5. Auto Rebirth (Renascer para ganhar multiplicadores)
--- -------------------------------------------------------
-local function autoRebirth()
-    while task.wait(3) do
-        if _G.AutoRebirth then
-            for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-                if v.Name:lower():find("rebirth") or v.Name:lower():find("renascer") then
-                    pcall(function()
-                        if v:IsA("RemoteEvent") then
-                            v:FireServer()
-                        elseif v:IsA("RemoteFunction") then
-                            v:InvokeServer()
-                        end
-                    end)
-                end
-            end
-        end
-    end
-end
-
--- -------------------------------------------------------
--- Execução Paralela das Funções
--- -------------------------------------------------------
-task.spawn(coletarOvosProximos)
-task.spawn(gerenciarMissoes)
-task.spawn(chocarOvosAutomatico)
-task.spawn(autoRebirth)
-
-print("--------------------------------------------------")
-print("[ROUBE UM OVO] Script principal carregado com sucesso!")
-print("--------------------------------------------------")
+st.success("Copie o bloco de código acima e cole direto no seu executor (Delta, Fluxus, etc.).")
